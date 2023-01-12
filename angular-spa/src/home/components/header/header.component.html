@@ -1,0 +1,20 @@
+<div class="header">
+  <h1>
+    <a routerLink="/">
+      Auth0 Angular Demo App
+    </a>
+  </h1>
+  <ul class="navigation">
+    <li>
+      <a routerLink="some-feature">Some Feature</a>
+    </li>
+  </ul>
+  <div *ngIf="(authService.user$ | async) as user" class="user">
+    <img alt="user avatar" [src]="user.picture || 'http://cdn.onlinewebfonts.com/svg/img_264570.png'" />
+    <p>{{ user.name }}</p>
+  </div>
+  <div class="action">
+    <button *ngIf="!(authService.isAuthenticated$ | async)" type="button" (click)="login()">Login</button>
+    <button *ngIf="(authService.isAuthenticated$ | async) === true" type="button" (click)="logout()">Logout</button>
+  </div>
+</div>
