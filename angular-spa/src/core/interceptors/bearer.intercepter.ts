@@ -15,7 +15,7 @@ export class BearerInterceptor implements HttpInterceptor {
         console.log('attach bearer token to header')
         return next.handle(req.clone({
           setHeaders: {
-            Authorization: `Basic ${token}`
+            Authorization: `Bearer ${token}`
           }
         }));
       }

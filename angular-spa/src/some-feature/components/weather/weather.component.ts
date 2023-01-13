@@ -1,4 +1,5 @@
 import { Component, OnInit } from '@angular/core';
+import { WeatherForecast } from 'src/core/dtos/weather-forecast.dto';
 import { ApiService } from 'src/core/services/api.service';
 
 @Component({
@@ -8,11 +9,13 @@ import { ApiService } from 'src/core/services/api.service';
 })
 export class WeatherComponent implements OnInit {
 
+  weatherForecasts: WeatherForecast[] = [];
+
   constructor(private apiService: ApiService) {}
   
   ngOnInit(): void {
-    this.apiService.getData().subscribe((data) => {
-      console.log(data);
-    })
+    this.apiService.getWeatherForecasts().subscribe((data) => {
+      this.weatherForecasts = data;
+    });
   }
 }

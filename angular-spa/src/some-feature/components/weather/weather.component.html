@@ -1,1 +1,7 @@
-<p>weather works!</p>
+<ul>
+  <li *ngFor="let weather of weatherForecasts" class="weather">
+    <p>{{ weather.date | date: 'dd.MM.YYYY'}}</p>
+    <p>TemperatureC: {{ weather.temperatureC }} </p>
+    <p>Summary {{ weather.summary }} </p>
+  </li>
+</ul>

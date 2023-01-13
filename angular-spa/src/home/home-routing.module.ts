@@ -14,7 +14,7 @@ const routes: Routes = [
         component: UserProfileComponent
       },
       {
-        path: 'some-feature',
+        path: 'weather',
         loadChildren: () => import('./../some-feature/some-feature.module')
           .then(m => m.SomeFeatureModule),
         canActivate: [AuthGuard]
