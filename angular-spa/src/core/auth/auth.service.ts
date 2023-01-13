@@ -1,7 +1,7 @@
 import { Injectable } from '@angular/core';
 import { Router } from '@angular/router';
 import { Auth0Client, createAuth0Client, User } from '@auth0/auth0-spa-js';
-import { BehaviorSubject, combineLatest, from, Observable, of, shareReplay, switchMap, tap } from 'rxjs';
+import { BehaviorSubject, combineLatest, from, Observable, of, shareReplay, concatMap, tap } from 'rxjs';
 
 @Injectable({ providedIn: 'root' })
 export class AuthService {
@@ -11,9 +11,9 @@ export class AuthService {
     authorizationParams: {
       redirect_uri: window.location.origin,
       audience: 'https:localhost:5000',
-      scope: 'openid profile email offline_access read:weather_forcast'
+      scope: 'openid profile email offline_access read:weather_forecast',
     },
-    useRefreshTokens: true
+    // useRefreshTokens: true,
   })).pipe(shareReplay(1));
   private _isAuthenticated$ = new BehaviorSubject<boolean>(false);
   private _user$ = new BehaviorSubject<User | undefined>(undefined);
@@ -30,13 +30,15 @@ export class AuthService {
 
   login(): Observable<void> {
     return this.auth0$.pipe(
-      switchMap((auth0) => from(auth0.loginWithRedirect()))
+      concatMap((auth0) => from(auth0.loginWithRedirect()))
     );
   }
 
   logout(): Observable<void> {
     return this.auth0$.pipe(
-      switchMap((auth0) => from(auth0.logout()))
+      concatMap((auth0) => from(auth0.logout({
+        clientId: 'oj9Kcy7D5QNYAHMEVlXbvUbTed7spztc',
+      })))
     );
   }
 
@@ -52,17 +54,33 @@ export class AuthService {
     );
   }
 
+  private tokenRecursive(getToken: Observable<any> ,token: string): void {
+    const expiredAt: number = JSON.parse(window.atob(token.split('.')[1])).exp;
+    setTimeout(() => getToken.subscribe(), expiredAt * 1000 - Date.now() - 1000);
+  }
+
   private initSession(): void {
     this.isAuthenticated().pipe(
-      switchMap((authenticated) => combineLatest([
-        of(authenticated), 
-        authenticated ? this.getUser() : of(undefined),
-        authenticated ? this.getAccessToken() : of(undefined)
-      ]))
-    ).subscribe(([isAuthenticated, user, token]) => {
-      this._isAuthenticated$.next(isAuthenticated);
-      this._user$.next(user);
-      this._accessToken$.next(token);
+      concatMap((authenticated) => {
+        if (authenticated) {
+          return combineLatest([
+            of(authenticated), 
+            this.getUser(),
+            this.getAccessToken()
+          ]);
+        }
+        return of(authenticated);
+      })
+    ).subscribe((auth) => {
+      if (Array.isArray(auth)) {
+        const [isAuthenticated, user, token] = auth;
+        this._isAuthenticated$.next(isAuthenticated);
+        this._user$.next(user);
+        this._accessToken$.next(token);
+      }
+      if (typeof auth === 'boolean' ) {
+        this._isAuthenticated$.next(auth);
+      }
     });
   }
 
@@ -75,14 +93,14 @@ export class AuthService {
     }
 
     this.auth0$.pipe(
-      switchMap((auth0) => from(auth0.handleRedirectCallback()))
+      concatMap((auth0) => from(auth0.handleRedirectCallback()))
     ).pipe(
-      tap((result) => {
+      tap((result: any) => {
         if (result.appState && result.appState.targetUrl) {
           console.log(result.appState.targetUrl);
         }
       }),
-      switchMap(() => combineLatest([
+      concatMap(() => combineLatest([
         this.isAuthenticated(),
         this.getUser(),
         this.getAccessToken()
@@ -97,19 +115,22 @@ export class AuthService {
 
   private getAccessToken(): Observable<string> {
     return this.auth0$.pipe(
-      switchMap((auth0) => from(auth0.getTokenSilently()))
+      concatMap((auth0) => from(auth0.getTokenSilently())),
+      tap((token: string) => {
+        this.tokenRecursive(this.getAccessToken(), token);
+      })
     );
   }
 
   private getUser(): Observable<User | undefined> {
     return this.auth0$.pipe(
-      switchMap((auth0) => from(auth0.getUser()))
+      concatMap((auth0) => from(auth0.getUser()))
     );
   }
 
   private isAuthenticated(): Observable<boolean> {
     return this.auth0$.pipe(
-      switchMap((auth0) => from(auth0.isAuthenticated()))
+      concatMap((auth0) => from(auth0.isAuthenticated()))
     );
   }
 
